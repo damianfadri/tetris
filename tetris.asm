@@ -103,6 +103,25 @@
 
 .stack 100h
 .code
+    print_flag proc
+        mov dl, 0
+        mov dh, 0
+        xor bh, bh
+
+
+        mov ah, 02h
+        int 10h
+
+        mov al, flag
+        add al, '0'
+
+        mov cx, 1
+
+        mov ah, 09h
+        int 10h
+        ret
+    print_flag endp
+
     clear_screen proc
         mov ax, 0003h               ; Set video mode
         int 10h
@@ -181,7 +200,6 @@
             je revert_rotate_ccw    ; revert changes if so
             cmp flag, 3             ; if out of bounds, move to rotate
             je try_move_to_rotate_ccw
-
             ret                     ; if no collision, end
 
         try_move_to_rotate_ccw:
@@ -2838,6 +2856,9 @@
 
         fin:
             call clear_screen
+            mov ah, 4ch
+            int 21h
+            ret
 
         about:
             call clear_screen
@@ -2882,6 +2903,7 @@
 
             call print_level
             call print_goal
+            call print_flag
 
         pre_action:
             call print_grid
