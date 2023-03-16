@@ -140,7 +140,7 @@
         div cl
 
         cmp ah, 0
-        jne p0
+        jne update_clock_start
         inc y                       ; bring tetrimino 1 row down
 
         update_clock_start:
@@ -1860,7 +1860,7 @@
         mov ah, 09h
         int 21h
 
-        mov dl, 3                   ; x-coord
+        mov dl, 31                   ; x-coord
         mov dh, 13                  ; y-coord
         mov ah, 02h
         int 10h
