@@ -1,7 +1,7 @@
 .model small
 .data
 
-    flag db 0                       ; 1 if collision, 2 if dead, 3 if out of bounds, 4 if landed, 5 if times up, 6 if new level
+    flag db 0                       ; 1 if collision, 2 if dead, 3 if out of bounds, 4 if landed, 5 if times up, 6 if new level, 7 if out of bounds top
     hold_flag db 0                  ; 1 if recently held something
 
     clock db 0
@@ -103,25 +103,6 @@
 
 .stack 100h
 .code
-    print_flag proc
-        mov dl, 0
-        mov dh, 0
-        xor bh, bh
-
-
-        mov ah, 02h
-        int 10h
-
-        mov al, flag
-        add al, '0'
-
-        mov cx, 1
-
-        mov ah, 09h
-        int 10h
-        ret
-    print_flag endp
-
     clear_screen proc
         mov ax, 0003h               ; Set video mode
         int 10h
@@ -196,13 +177,14 @@
             call adjust_tetrimino
             call check_tetrimino    ; check if there are collisions
 
-            cmp flag, 1
-            je revert_rotate_ccw    ; revert changes if so
-            cmp flag, 3             ; if out of bounds, move to rotate
-            je try_move_to_rotate_ccw
+            cmp flag, 1             ; if out of bounds, move to rotate
+            je revert_rotate_ccw_temp
+            cmp flag, 3
+            je try_move_sideways_ccw
+
             ret                     ; if no collision, end
 
-        try_move_to_rotate_ccw:
+        try_move_sideways_ccw:
             mov cl, x
             mov ch, y
             mov ghost_x, cl         ; store current x-coord
@@ -211,16 +193,19 @@
             cmp y, 2
             jge check_side_out_of_bounds_ccw
 
-        try_move_up_rotate_ccw:
+        try_move_down_rotate_ccw:
             inc y
             call check_tetrimino
 
             cmp flag, 1             ; revert y-coord and rotate value
             je revert_rotate_ccw_start
             cmp flag, 3
-            je try_move_up_rotate_ccw
+            je try_move_down_rotate_ccw
+            
+            jmp try_move_sideways_ccw
 
-            ret
+        revert_rotate_ccw_temp:
+            jmp revert_rotate_ccw
 
         check_side_out_of_bounds_ccw:
             cmp x, 40
@@ -289,13 +274,13 @@
             call check_tetrimino    ; check if there are collisions
             
             cmp flag, 1
-            je revert_rotate_cw     ; revert changes if so
+            je revert_rotate_cw_temp
             cmp flag, 3             ; if out of bounds, move to rotate
-            je try_move_to_rotate_cw
+            je try_move_sideways_cw
 
             ret                     ; if no collision, end
 
-        try_move_to_rotate_cw:
+        try_move_sideways_cw:
             mov cl, x
             mov ch, y
             mov ghost_x, cl         ; store current x-coord
@@ -304,23 +289,25 @@
             cmp y, 1
             jge check_side_out_of_bounds_cw
 
-        try_move_up_rotate_cw:
+        try_move_down_rotate_cw:
             inc y
             call check_tetrimino
 
             cmp flag, 1             ; revert y-coord and rotate value
             je revert_rotate_cw_start
             cmp flag, 3
-            je try_move_up_rotate_cw
-
+            je try_move_down_rotate_cw
             ret
 
-        check_side_out_of_bounds_cw: ;p10
+        revert_rotate_cw_temp:
+            jmp revert_rotate_cw
+
+        check_side_out_of_bounds_cw:
             cmp x, 40
             jle try_move_right_rotate_cw
             jg try_move_left_rotate_cw
 
-        try_move_right_rotate_cw: ;p6
+        try_move_right_rotate_cw:
             add x, 2
             call check_tetrimino
 
@@ -331,7 +318,7 @@
 
             ret
 
-        try_move_left_rotate_cw: ;p7
+        try_move_left_rotate_cw:
             sub x, 2
             call check_tetrimino
 
@@ -342,14 +329,14 @@
 
             ret
 
-        revert_rotate_cw_start: ;p8
+        revert_rotate_cw_start:
             mov cl, ghost_x
             mov ch, ghost_y
             mov x, cl
             mov y, ch
             jmp revert_rotate_cw
 
-        revert_rotate_cw: ;p2
+        revert_rotate_cw:
             mov cl, 255
             dec tet_rotate          ; revert to original rotate value
             cmp tet_rotate, cl      ; check if rotate value is 255
@@ -357,7 +344,7 @@
 
             jmp rotate_cw_update
 
-        revert_rotate_cw_initial: ;p3
+        revert_rotate_cw_initial:
             mov tet_rotate, 3
 
         rotate_cw_update: ;p4
@@ -758,8 +745,7 @@
         collision_detected:
             cmp y, 0                ; if current coordinate is NOT at the top
             jne set_collision_flag  ; ordinary collision
-
-            mov flag, 2             ; dead
+            mov flag, 2
             ret
 
         set_out_of_bounds_flag:
@@ -2903,7 +2889,6 @@
 
             call print_level
             call print_goal
-            call print_flag
 
         pre_action:
             call print_grid
@@ -2934,9 +2919,9 @@
             call write_grid
             call check_grid
             call clear_grid
-            
+
             call print_goal
-            
+
             ; Set initial coordinates of new tetrimino
             mov x, 41
             mov y, 0
